@@ -1,0 +1,10 @@
+--- e2e/smoke/BUILD.bazel
++++ e2e/smoke/BUILD.bazel
+@@ -21,4 +21,7 @@ structure_test(
+     name = "test",
+     config = ["test.yaml"],
+     image = ":image",
++    # If there's not a runtime like docker or podman available on the machine,
++    # will fail with "Cannot connect to the Docker daemon at unix:///var/run/docker.sock"
++    tags = ["requires-oci-runtime"],
+ )
