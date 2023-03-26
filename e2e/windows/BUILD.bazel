@@ -1,0 +1,34 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+
+package(default_visibility = ["//visibility:public"])
+
+go_binary(
+    name = "binary",
+    srcs = ["main.go"],
+    cgo = 0,
+    goarch = "amd64",
+    goos = "windows",
+)
+
+pkg_tar(
+    name = "binary_layer",
+    srcs = ["binary"],
+)
+
+oci_image(
+    name = "image",
+    base = "@servercore_windows_amd64",
+    cmd = ["/binary.exe"],
+    tars = [
+        ":binary_layer",
+    ],
+)
+
+oci_push(
+    name = "push",
+    image = ":image",
+    repository = "index.docker.io/thesayyn/windows_image",
+    repotags = ["latest"],
+)
