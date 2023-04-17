@@ -1,11 +1,18 @@
 "Implementation details for image rule"
 
+load("@aspect_bazel_lib//lib:expand_make_vars.bzl", "expand_locations")
+
 _DOC = """Build an OCI compatible container image.
+
+Most users should use the wrapper macro instead, [oci_image](#oci_image).
+This rule can be useful in cases where you want to bypass the macro.
 
 It takes number of tar files as layers to create image filesystem.
 For incrementality, use more fine grained tar files to build up the filesystem.
 
 ```starlark
+load("@rules_oci//oci:defs.bzl", "oci_image")
+
 oci_image(
     tars = [
         "rootfs.tar",
@@ -16,7 +23,7 @@ oci_image(
 )
 ```
 
-To base an oci_image on another oci_image, the `base` attribute MAYBE used.
+To base an oci_image on another oci_image, the `base` attribute may be used.
 
 ```starlark
 oci_image(
@@ -27,7 +34,7 @@ oci_image(
 )
 ```
 
-To combine `env` with environment variables from the `base`, bash style variable syntax MAYBE used.
+To combine `env` with environment variables from the `base`, bash-style variable syntax may be used.
 
 ```starlark
 oci_image(
@@ -138,7 +145,7 @@ def _oci_image_impl(ctx):
         args.add(ctx.attr.workdir, format = "--workdir=%s")
 
     if ctx.attr.env:
-        args.add_all(ctx.attr.env.items(), map_each = _format_string_to_string_tuple, format_each = "--env=%s")
+        args.add_all([(key, expand_locations(ctx, value, [])) for (key, value) in ctx.attr.env.items()], map_each = _format_string_to_string_tuple, format_each = "--env=%s")
 
     if ctx.attr.labels:
         args.add(ctx.file.labels.path, format = "--labels-file=%s")

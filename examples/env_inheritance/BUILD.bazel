@@ -17,6 +17,7 @@ oci_image(
     env = {
         "ENV1": "$PATH:/test",
         "ENV2": "/prepend:${PATH}:/test2",
+        "ENV3": "$(rootpath :datum)",
     },
     os = "linux",
     tars = ["app.tar"],
