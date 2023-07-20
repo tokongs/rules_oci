@@ -1,5 +1,7 @@
 "Implementation details for image rule"
 
+load("//oci/private:util.bzl", "util")
+
 _DOC = """Build an OCI compatible container image.
 
 Note, most users should use the wrapper macro instead of this rule directly.
@@ -76,6 +78,7 @@ If `group/gid` is not specified, the default group and supplementary groups of t
     "labels": attr.label(doc = "A file containing a dictionary of labels. Each line should be in the form `name=value`.", allow_single_file = True),
     "annotations": attr.label(doc = "A file containing a dictionary of annotations. Each line should be in the form `name=value`.", allow_single_file = True),
     "_image_sh_tpl": attr.label(default = "image.sh.tpl", allow_single_file = True),
+    "_windows_constraint": attr.label(default = "@platforms//os:windows"),
 }
 
 def _format_string_to_string_tuple(kv):
@@ -101,20 +104,22 @@ def _oci_image_impl(ctx):
     registry = ctx.toolchains["@rules_oci//oci:registry_toolchain_type"]
     jq = ctx.toolchains["@aspect_bazel_lib//lib:jq_toolchain_type"]
 
-    launcher = ctx.actions.declare_file("image_%s.sh" % ctx.label.name)
+    bash_launcher = ctx.actions.declare_file("image_%s.sh" % ctx.label.name)
+    inputs_depsets = [depset([bash_launcher])]
+
     ctx.actions.expand_template(
         template = ctx.file._image_sh_tpl,
-        output = launcher,
+        output = bash_launcher,
         is_executable = True,
         substitutions = {
             "{{registry_launcher_path}}": registry.registry_info.launcher.path,
             "{{crane_path}}": crane.crane_info.binary.path,
             "{{jq_path}}": jq.jqinfo.bin.path,
             "{{storage_dir}}": "/".join([ctx.bin_dir.path, ctx.label.package, "storage_%s" % ctx.label.name]),
+            "{{devnull}}": "NUL" if ctx.target_platform_has_constraint(ctx.attr._windows_constraint[platform_common.ConstraintValueInfo]) else "/dev/null",
         },
     )
 
-    inputs_depsets = []
     base = "oci:empty_base"
 
     if ctx.attr.base:
@@ -170,7 +175,7 @@ def _oci_image_impl(ctx):
         inputs = depset(transitive = inputs_depsets),
         arguments = [args],
         outputs = [output],
-        executable = launcher,
+        executable = util.maybe_wrap_launcher_for_windows(ctx, bash_launcher),
         tools = [crane.crane_info.binary, registry.registry_info.launcher, registry.registry_info.registry, jq.jqinfo.bin],
         mnemonic = "OCIImage",
         progress_message = "OCI Image %{label}",
@@ -187,6 +192,7 @@ oci_image = rule(
     attrs = _attrs,
     doc = _DOC,
     toolchains = [
+        "@bazel_tools//tools/sh:toolchain_type",
         "@rules_oci//oci:crane_toolchain_type",
         "@rules_oci//oci:registry_toolchain_type",
         "@aspect_bazel_lib//lib:jq_toolchain_type",
