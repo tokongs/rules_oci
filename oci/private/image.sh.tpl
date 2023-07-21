@@ -34,8 +34,10 @@ function get_option() {
 function empty_base() {
     local registry=$1
     local ref="$registry/oci/empty_base:latest"
+    
     # TODO: https://github.com/google/go-containerregistry/issues/1513
-    ref="$("${CRANE}" append --oci-empty-base -t "${ref}" -f <(tar -cf tarfilename.tar -T /dev/null))"
+    tar -cf empty.tar -T {{devnull}}
+    ref="$("${CRANE}" append --oci-empty-base -t "${ref}" -f empty.tar)"
     ref=$("${CRANE}" config "${ref}" | "${JQ}"  ".rootfs.diff_ids = [] | .history = []" | "${CRANE}" edit config "${ref}")
     ref=$("${CRANE}" manifest "${ref}" | "${JQ}"  ".layers = []" | "${CRANE}" edit manifest "${ref}")
 

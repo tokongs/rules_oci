@@ -1,5 +1,7 @@
 "Implementation details for image rule"
 
+load("//oci/private:util.bzl", "util")
+
 _DOC = """Build an OCI compatible container image.
 
 Note, most users should use the wrapper macro instead of this rule directly.
@@ -102,10 +104,9 @@ def _oci_image_impl(ctx):
     registry = ctx.toolchains["@rules_oci//oci:registry_toolchain_type"]
     jq = ctx.toolchains["@aspect_bazel_lib//lib:jq_toolchain_type"]
 
-    inputs_depsets = []
-
     bash_launcher = ctx.actions.declare_file("image_%s.sh" % ctx.label.name)
-    win_launcher = ctx.actions.declare_file("image_%s.bat" % ctx.label.name)
+    inputs_depsets = [depset([bash_launcher])]
+
     ctx.actions.expand_template(
         template = ctx.file._image_sh_tpl,
         output = bash_launcher,
@@ -115,6 +116,7 @@ def _oci_image_impl(ctx):
             "{{crane_path}}": crane.crane_info.binary.path,
             "{{jq_path}}": jq.jqinfo.bin.path,
             "{{storage_dir}}": "/".join([ctx.bin_dir.path, ctx.label.package, "storage_%s" % ctx.label.name]),
+            "{{devnull}}": "NUL" if ctx.target_platform_has_constraint(ctx.attr._windows_constraint[platform_common.ConstraintValueInfo]) else "/dev/null",
         },
     )
     is_windows = ctx.target_platform_has_constraint(ctx.attr._windows_constraint[platform_common.ConstraintValueInfo])
@@ -199,7 +201,7 @@ if defined args (
         inputs = depset(transitive = inputs_depsets),
         arguments = [args],
         outputs = [output],
-        executable = launcher,
+        executable = util.maybe_wrap_launcher_for_windows(ctx, bash_launcher),
         tools = [crane.crane_info.binary, registry.registry_info.launcher, registry.registry_info.registry, jq.jqinfo.bin],
         mnemonic = "OCIImage",
         progress_message = "OCI Image %{label}",
