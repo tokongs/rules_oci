@@ -36,8 +36,7 @@ function empty_base() {
     local ref="$registry/oci/empty_base:latest"
     
     # TODO: https://github.com/google/go-containerregistry/issues/1513
-    tar -cf empty.tar -T {{devnull}}
-    ref="$("${CRANE}" append --oci-empty-base -t "${ref}" -f empty.tar)"
+    ref="$("${CRANE}" append --oci-empty-base -t "${ref}" -f {{empty_tar}})"
     ref=$("${CRANE}" config "${ref}" | "${JQ}"  ".rootfs.diff_ids = [] | .history = []" | "${CRANE}" edit config "${ref}")
     ref=$("${CRANE}" manifest "${ref}" | "${JQ}"  ".layers = []" | "${CRANE}" edit manifest "${ref}")
 

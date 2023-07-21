@@ -36,4 +36,4 @@ layers="${LAYERS}" \
         --output-format json > "${STAGING_DIR}/manifest.json"
 
 # TODO: https://github.com/bazel-contrib/rules_oci/issues/217
-tar -C "${STAGING_DIR}" -cf "${TARBALL_PATH}" manifest.json blobs
+/c/windows/system32/tar -C "${STAGING_DIR}" -cf "${TARBALL_PATH}" manifest.json blobs

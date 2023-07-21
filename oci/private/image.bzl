@@ -79,6 +79,8 @@ If `group/gid` is not specified, the default group and supplementary groups of t
     "annotations": attr.label(doc = "A file containing a dictionary of annotations. Each line should be in the form `name=value`.", allow_single_file = True),
     "_image_sh_tpl": attr.label(default = "image.sh.tpl", allow_single_file = True),
     "_windows_constraint": attr.label(default = "@platforms//os:windows"),
+    # TODO: https://github.com/google/go-containerregistry/issues/1513
+    "_empty_tar": attr.label(default = "empty.tar", allow_single_file = True),
 }
 
 def _format_string_to_string_tuple(kv):
@@ -116,35 +118,9 @@ def _oci_image_impl(ctx):
             "{{crane_path}}": crane.crane_info.binary.path,
             "{{jq_path}}": jq.jqinfo.bin.path,
             "{{storage_dir}}": "/".join([ctx.bin_dir.path, ctx.label.package, "storage_%s" % ctx.label.name]),
-            "{{devnull}}": "NUL" if ctx.target_platform_has_constraint(ctx.attr._windows_constraint[platform_common.ConstraintValueInfo]) else "/dev/null",
+            "{{empty_tar}}": ctx.file._empty_tar.path,
         },
     )
-    is_windows = ctx.target_platform_has_constraint(ctx.attr._windows_constraint[platform_common.ConstraintValueInfo])
-    if is_windows:
-        inputs_depsets.append(depset([bash_launcher]))
-        ctx.actions.write(
-            output = win_launcher,
-            content = r"""\
-@echo off
-SETLOCAL ENABLEEXTENSIONS
-SETLOCAL ENABLEDELAYEDEXPANSION
-for %%a in ("{bash_bin}") do set "bash_bin_dir=%%~dpa"
-set PATH=%bash_bin_dir%;%PATH%
-set args=%*
-rem Escape \ and * in args before passsing it with double quote
-if defined args (
-  set args=!args:\=\\\\!
-  set args=!args:"=\"!
-)
-"{bash_bin}" -c "!{launcher}! !args!"
-""".format(
-                bash_bin = ctx.toolchains["@bazel_tools//tools/sh:toolchain_type"].path,
-                launcher = "image_%s.sh" % ctx.label.name,
-            ),
-            is_executable = True,
-        )
-
-    launcher = win_launcher if is_windows else bash_launcher
 
     base = "oci:empty_base"
 
