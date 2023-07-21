@@ -13,9 +13,9 @@ oci_image(
         "--arg1",
         "--arg2",
     ],
-    entrypoint = ["/custom_bin"],
+    entrypoint = ["//custom_bin"],
     env = {
-        "ENV": "/test",
+        "ENV": "//test",
     },
     os = "linux",
 )

@@ -177,6 +177,11 @@ def _oci_image_impl(ctx):
         inputs = depset(transitive = inputs_depsets),
         arguments = [args],
         outputs = [output],
+        env = {
+            # Don't convert arguments like --entrypoint=/some/bin to --entrypoint=C:/msys64/some/bin
+            # But it doesn't work...
+            # "MSYS_NO_PATHCONV": "1",
+        },
         executable = util.maybe_wrap_launcher_for_windows(ctx, bash_launcher),
         tools = [crane.crane_info.binary, registry.registry_info.launcher, registry.registry_info.registry, jq.jqinfo.bin],
         mnemonic = "OCIImage",
